@@ -1,0 +1,1276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wrench to Firewall — Jonathan Luzader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700&display=swap">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #090C12; color: #E8D5B4; font-family: 'Syne', sans-serif; overflow: hidden; -webkit-font-smoothing: antialiased; user-select: none; }
+  body { cursor: default; }
+  .serif { font-family: 'Fraunces', Georgia, serif; }
+  .mono  { font-family: 'DM Mono', monospace; }
+  .stage { position: fixed; inset: 0; overflow: hidden; }
+  .stage-svg { width: 100%; height: 100%; display: block; }
+  .caption-box { position: fixed; top: 5vh; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 30; width: min(90vw, 1200px); }
+  .chapter-tag { display: inline-block; padding: 0.45em 1.2em; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); border-radius: 2px; font-family: 'DM Mono', monospace; font-size: clamp(10px, 1vw, 13px); letter-spacing: 0.18em; text-transform: uppercase; color: #E8D5B4; opacity: 0; transition: opacity 1.2s ease; border-left: 2px solid #F97316; }
+  .chapter-tag.show { opacity: 1; }
+  .scene-title { font-family: 'Fraunces', serif; font-size: clamp(28px, 4.5vw, 62px); font-weight: 300; line-height: 1.08; margin-top: 1.4vh; opacity: 0; transition: opacity 1.4s ease; text-shadow: 0 4px 32px rgba(0,0,0,0.8); color: #F4E4C6; }
+  .scene-title.show { opacity: 0.97; }
+  .narrative { font-family: 'Fraunces', serif; font-size: clamp(14px, 1.6vw, 21px); font-style: italic; font-weight: 300; line-height: 1.6; max-width: 72%; margin: 1.4vh auto 0; opacity: 0; transition: opacity 1.4s ease; text-shadow: 0 2px 18px rgba(0,0,0,0.65); color: #D4C4A0; }
+  .narrative.show { opacity: 0.93; }
+  .resource { position: fixed; bottom: 8vh; left: 50%; transform: translateX(-50%); max-width: min(85vw, 950px); width: 85vw; padding: 0.9em 1.4em; background: rgba(0,0,0,0.82); backdrop-filter: blur(10px); border-radius: 3px; border-left: 3px solid #F97316; opacity: 0; transition: opacity 1.2s ease; z-index: 35; }
+  .resource.show { opacity: 1; }
+  .resource-label { display: block; font-family: 'DM Mono', monospace; font-size: clamp(10px, 1vw, 12px); letter-spacing: 0.22em; text-transform: uppercase; color: #F97316; margin-bottom: 0.3em; font-weight: 500; }
+  .resource-text { font-size: clamp(12px, 1.1vw, 14px); line-height: 1.5; color: #E8D5B4; font-weight: 300; font-family: 'DM Mono', monospace; }
+  .nav-bar { position: fixed; bottom: 2vh; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 8px 18px; background: rgba(0,0,0,0.78); border-radius: 30px; z-index: 40; backdrop-filter: blur(8px); border: 1px solid rgba(232,213,180,0.12); }
+  .nav-bar button { background: transparent; color: #E8D5B4; border: 1px solid rgba(232,213,180,0.28); border-radius: 4px; padding: 6px 12px; font-family: 'Syne', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .nav-bar button:hover { background: rgba(249,115,22,0.15); border-color: rgba(249,115,22,0.55); }
+  .progress-dots { display: flex; gap: 6px; align-items: center; }
+  .progress-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(232,213,180,0.22); cursor: pointer; transition: all 0.2s; }
+  .progress-dot:hover { background: rgba(232,213,180,0.55); }
+  .progress-dot.active { background: #F97316; box-shadow: 0 0 10px rgba(249,115,22,0.6); transform: scale(1.25); }
+  .help-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+  .help-overlay.show { display: flex; }
+  .help-content { background: #10131A; padding: 40px 50px; border-radius: 8px; border: 1px solid rgba(232,213,180,0.25); max-width: 600px; }
+  .help-content h2 { font-family: 'Fraunces', serif; font-weight: 300; margin-bottom: 20px; color: #F97316; }
+  .help-content kbd { display: inline-block; background: rgba(232,213,180,0.12); border: 1px solid rgba(232,213,180,0.35); border-radius: 3px; padding: 3px 8px; font-family: 'DM Mono', monospace; font-size: 12px; color: #F97316; min-width: 24px; text-align: center; margin: 0 2px; }
+  .help-content table { width: 100%; }
+  .help-content td { padding: 6px 12px; font-size: 14px; color: #E8D5B4; }
+  .help-content td:first-child { text-align: right; white-space: nowrap; }
+  .help-content .close-hint { margin-top: 20px; text-align: center; font-size: 12px; color: rgba(232,213,180,0.45); }
+  .title-screen { position: fixed; inset: 0; background: radial-gradient(ellipse at 40% 60%, #141C2E 0%, #090C12 85%); z-index: 80; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 1s ease; }
+  .title-screen.hidden { opacity: 0; pointer-events: none; }
+  .title-eyebrow { font-family: 'DM Mono', monospace; font-size: clamp(11px, 1.1vw, 14px); letter-spacing: 0.35em; text-transform: uppercase; color: #F97316; margin-bottom: 1.6em; }
+  .title-name { font-family: 'Fraunces', serif; font-weight: 300; font-size: clamp(52px, 7.5vw, 120px); color: #F4E4C6; letter-spacing: 0.01em; line-height: 1; text-shadow: 0 8px 60px rgba(249,115,22,0.18); text-align: center; }
+  .title-divider { width: 80px; height: 1px; background: linear-gradient(90deg, transparent, #F97316, transparent); margin: 1.6em auto; }
+  .title-subtitle { font-family: 'DM Mono', monospace; font-size: clamp(13px, 1.4vw, 18px); color: #F97316; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400; }
+  .title-tagline { font-family: 'Fraunces', serif; font-style: italic; font-weight: 300; font-size: clamp(14px, 1.6vw, 22px); color: #D4C4A0; opacity: 0.75; margin-top: 2.5em; max-width: 55ch; text-align: center; line-height: 1.55; }
+  .title-begin { margin-top: 4.5em; font-family: 'DM Mono', monospace; font-size: 12px; color: #F97316; letter-spacing: 0.3em; text-transform: uppercase; animation: pulse-fade 2.2s ease-in-out infinite; }
+  @keyframes pulse-fade { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.95; } }
+  .help-btn { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; background: rgba(0,0,0,0.7); color: #E8D5B4; border: 1px solid rgba(232,213,180,0.28); border-radius: 50%; font-family: 'DM Mono', monospace; font-size: 15px; cursor: pointer; z-index: 50; }
+  .help-btn:hover { background: rgba(249,115,22,0.2); }
+</style>
+</head>
+<body>
+
+<div class="title-screen" id="titleScreen">
+  <div class="title-eyebrow">A career pivot story</div>
+  <div class="title-name serif">Jonathan Luzader</div>
+  <div class="title-divider"></div>
+  <div class="title-subtitle">Wrench to Firewall</div>
+  <div class="title-tagline">From USAF jet engines and cargo ramps to network defense and zero-days — the long walk from the hangar to cybersecurity.</div>
+  <div class="title-begin">Press <kbd style="background:rgba(232,213,180,0.12);border:1px solid rgba(232,213,180,0.35);padding:3px 8px;border-radius:3px;font-family:'DM Mono',monospace;font-size:11px;color:#F97316;margin:0 4px;">Space</kbd> to begin</div>
+</div>
+
+<div class="stage">
+  <svg class="stage-svg" id="stageSvg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+    <defs id="defsLayer"></defs>
+    <g id="bgLayer"></g>
+    <g id="worldLayer"></g>
+    <g id="objectLayer"></g>
+    <g id="figureLayer"></g>
+    <g id="overlayLayer"></g>
+  </svg>
+</div>
+
+<div class="caption-box">
+  <div class="chapter-tag" id="chapterTag"></div>
+  <h1 class="scene-title serif" id="sceneTitle"></h1>
+  <p class="narrative" id="narrative"></p>
+</div>
+
+<div class="resource" id="resource">
+  <span class="resource-label" id="resourceLabel"></span>
+  <p class="resource-text" id="resourceText"></p>
+</div>
+
+<div class="nav-bar">
+  <button id="navPrev" title="Previous (←)">←</button>
+  <button id="navReplay" title="Replay (R)">↻</button>
+  <div class="progress-dots" id="progressDots"></div>
+  <button id="navNext" title="Next (Space / →)">→</button>
+</div>
+
+<button class="help-btn" id="helpBtn" onclick="document.getElementById('helpOverlay').classList.toggle('show')">?</button>
+
+<div class="help-overlay" id="helpOverlay">
+  <div class="help-content">
+    <h2 class="serif">Keyboard Controls</h2>
+    <table>
+      <tr><td><kbd>Space</kbd> or <kbd>→</kbd></td><td>Next scene</td></tr>
+      <tr><td><kbd>←</kbd></td><td>Previous scene</td></tr>
+      <tr><td><kbd>R</kbd></td><td>Replay current scene</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>8</kbd></td><td>Jump to scene</td></tr>
+      <tr><td><kbd>T</kbd></td><td>Return to title screen</td></tr>
+      <tr><td><kbd>F</kbd></td><td>Toggle fullscreen</td></tr>
+      <tr><td><kbd>?</kbd></td><td>Show / hide this help</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close help</td></tr>
+    </table>
+    <p class="close-hint">Click anywhere or press <kbd>?</kbd> / <kbd>Esc</kbd> to close.</p>
+  </div>
+</div>
+
+<script>
+document.getElementById('helpOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'helpOverlay') e.target.classList.remove('show');
+});
+</script>
+
+<!-- ============================================================ TWEEN ENGINE ============================================================ -->
+<script>
+(function() {
+'use strict';
+const EASE = {
+  linear: t => t,
+  easeIn: t => t * t,
+  easeOut: t => 1 - Math.pow(1 - t, 2),
+  easeInOut: t => t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2,
+  bounce: t => { const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); },
+};
+const _active = new Set();
+function tween(opts) {
+  const { from=0, to=1, duration=500, easing=EASE.easeInOut, onUpdate=()=>{}, onComplete=()=>{}, delay=0 } = opts;
+  return new Promise(resolve => {
+    let cancelled = false;
+    const h = { cancel: () => { cancelled=true; resolve(); } };
+    _active.add(h);
+    function run() {
+      const t0 = performance.now();
+      function step(now) {
+        if (cancelled) { _active.delete(h); return; }
+        const t = Math.min(1, (now-t0)/duration);
+        onUpdate(from + (to-from)*easing(t));
+        if (t < 1) requestAnimationFrame(step);
+        else { _active.delete(h); onComplete(); resolve(); }
+      }
+      requestAnimationFrame(step);
+    }
+    if (delay > 0) { const timer = setTimeout(run, delay); h.cancel = () => { cancelled=true; clearTimeout(timer); _active.delete(h); resolve(); }; }
+    else run();
+  });
+}
+function cancelAllTweens() { for (const h of _active) h.cancel(); _active.clear(); }
+function parallel(...p) { return Promise.all(p); }
+async function sequence(...steps) { for (const s of steps) { if (typeof s==='function') await s(); else await s; } }
+function wait(ms) {
+  return new Promise(resolve => {
+    let cancelled = false;
+    const h = { cancel: () => { cancelled=true; resolve(); } };
+    _active.add(h);
+    const t = setTimeout(() => { _active.delete(h); if (!cancelled) resolve(); }, ms);
+    h.cancel = () => { cancelled=true; clearTimeout(t); _active.delete(h); resolve(); };
+  });
+}
+function loop(opts) {
+  const { duration=1000, easing=EASE.easeInOut, onUpdate=()=>{} } = opts;
+  let stopped = false;
+  const h = { stop: () => { stopped=true; } };
+  _active.add({ cancel: h.stop });
+  function cycle() {
+    if (stopped) return;
+    const t0 = performance.now();
+    function step(now) { if (stopped) return; onUpdate(easing(((now-t0)%duration)/duration), now-t0); requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+  }
+  cycle();
+  return h;
+}
+window.LongWalk = window.LongWalk || {};
+Object.assign(window.LongWalk, { tween, parallel, sequence, wait, loop, cancelAllTweens, EASE });
+})();
+</script>
+
+<!-- ============================================================ FIGURE ============================================================ -->
+<script>
+(function() {
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const FIG = {
+  headRadius:13, shoulderY:-100, shoulderWidth:4, pelvisY:-55, hipWidth:8,
+  upperArm:22, forearm:22, handRadius:4, thigh:28, shin:28, footRadius:4.5,
+  torsoWidth:7, limbWidth:6.5, packX:-16, packY:-90, packW:14, packH:32,
+};
+
+// ── The figure fill colour is now a vivid sky-blue so it reads clearly
+// against all dark backgrounds throughout the presentation.
+const FIGURE_COLOR = '#5BAADC';
+
+function el(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+class Figure {
+  constructor(opts={}) {
+    this.id = opts.id || ('fig-' + Math.random().toString(36).slice(2));
+    this.scale = opts.scale || 1;
+    // Use the shared colour; opts.fill can still override for NPCs
+    this.fill = opts.fill || FIGURE_COLOR;
+    this.hasBackpack = opts.backpack !== false;
+    this.state = {
+      x:opts.x||0, y:opts.y||0, facing:opts.facing||1, scale:this.scale,
+      bodyLean:0, hipDrop:0, bodyBob:0,
+      shoulderL:0, shoulderR:0, elbowL:0, elbowR:0,
+      hipAngL:0, hipAngR:0, kneeL:0, kneeR:0,
+      hasCap:false, heartVisible:false, heartScale:0, helmetOn:false,
+    };
+    this.root = el('g', { id:this.id });
+    this._build();
+    this.applyState();
+  }
+  _build() {
+    this.bodyWrap = el('g');
+    this.root.appendChild(this.bodyWrap);
+    if (this.hasBackpack) {
+      this.backpack = el('rect', { x:FIG.packX, y:FIG.packY, width:FIG.packW, height:FIG.packH, rx:2, fill:this.fill });
+      this.bodyWrap.appendChild(this.backpack);
+    }
+    // Legs
+    const mkLeg = () => {
+      const g=el('g'), th=el('line',{stroke:this.fill,'stroke-width':FIG.limbWidth,'stroke-linecap':'round'}),
+        sh=el('line',{stroke:this.fill,'stroke-width':FIG.limbWidth,'stroke-linecap':'round'}),
+        ft=el('circle',{r:FIG.footRadius,fill:this.fill});
+      g.append(th,sh,ft); this.bodyWrap.appendChild(g);
+      return {g,th,sh,ft};
+    };
+    const lL=mkLeg(), lR=mkLeg();
+    this.legLThigh=lL.th; this.legLShin=lL.sh; this.legLFoot=lL.ft;
+    this.legRThigh=lR.th; this.legRShin=lR.sh; this.legRFoot=lR.ft;
+    // Torso
+    this.torso = el('line',{stroke:this.fill,'stroke-width':FIG.torsoWidth,'stroke-linecap':'round'});
+    this.bodyWrap.appendChild(this.torso);
+    // Head
+    this.head = el('circle',{r:FIG.headRadius,fill:this.fill});
+    this.bodyWrap.appendChild(this.head);
+    // Grad cap
+    this.cap = el('g',{opacity:0});
+    this.cap.append(
+      el('rect',{x:-18,y:-3,width:36,height:8,fill:this.fill}),
+      el('polygon',{points:'-21,-3 0,-13 21,-3',fill:this.fill}),
+      el('line',{x1:15,y1:-8,x2:22,y2:6,stroke:'#F97316','stroke-width':1.5}),
+      el('circle',{cx:23,cy:8,r:3,fill:'#F97316'})
+    );
+    this.bodyWrap.appendChild(this.cap);
+    // Helmet
+    this.helmet = el('g',{opacity:0});
+    this.helmet.append(
+      el('ellipse',{cx:0,cy:-4,rx:18,ry:10,fill:'#1E3A5A',stroke:'#2A5080','stroke-width':1.5}),
+      el('rect',{x:-20,y:-1,width:40,height:4,rx:2,fill:'#1E3A5A',stroke:'#2A5080','stroke-width':1})
+    );
+    this.bodyWrap.appendChild(this.helmet);
+    // Arms
+    const mkArm = () => {
+      const g=el('g'),
+        up=el('line',{stroke:this.fill,'stroke-width':FIG.limbWidth,'stroke-linecap':'round'}),
+        fo=el('line',{stroke:this.fill,'stroke-width':FIG.limbWidth-0.5,'stroke-linecap':'round'}),
+        hd=el('circle',{r:FIG.handRadius,fill:this.fill});
+      g.append(up,fo,hd); this.bodyWrap.appendChild(g);
+      return {up,fo,hd};
+    };
+    const aL=mkArm(), aR=mkArm();
+    this.armLUpper=aL.up; this.armLFore=aL.fo; this.handL=aL.hd;
+    this.armRUpper=aR.up; this.armRFore=aR.fo; this.handR=aR.hd;
+    this.heldItemL=el('g',{opacity:0}); this.heldItemR=el('g',{opacity:0});
+    this.bodyWrap.append(this.heldItemL,this.heldItemR);
+    // Heart
+    this.heart=el('g',{opacity:0});
+    this.heart.appendChild(el('path',{d:'M 0 8 C -8 0 -16 -4 -16 -12 C -16 -20 -8 -22 0 -12 C 8 -22 16 -20 16 -12 C 16 -4 8 0 0 8 Z',fill:'#F97316'}));
+    this.bodyWrap.appendChild(this.heart);
+  }
+  getJoints() {
+    const s=this.state;
+    const lean=s.bodyLean*Math.PI/180, sinL=Math.sin(lean), cosL=Math.cos(lean);
+    const pelvisY=FIG.pelvisY+s.hipDrop;
+    const hipL={x:-FIG.hipWidth/2,y:pelvisY}, hipR={x:FIG.hipWidth/2,y:pelvisY};
+    function leg(hip,ha,kb) {
+      const tr=ha*Math.PI/180, knee={x:hip.x+FIG.thigh*Math.sin(tr),y:hip.y+FIG.thigh*Math.cos(tr)};
+      const sr=(ha-kb)*Math.PI/180, foot={x:knee.x+FIG.shin*Math.sin(sr),y:knee.y+FIG.shin*Math.cos(sr)};
+      return {knee,foot};
+    }
+    const lL=leg(hipL,s.hipAngL,s.kneeL), lR=leg(hipR,s.hipAngR,s.kneeR);
+    const torsoLen=FIG.shoulderY-FIG.pelvisY;
+    const anchor={x:0,y:pelvisY};
+    function rot(p,sin,cos,a) { return {x:a.x+(p.x*cos-p.y*sin),y:a.y+(p.x*sin+p.y*cos)}; }
+    const shoulderL=rot({x:-FIG.shoulderWidth,y:torsoLen},sinL,cosL,anchor);
+    const shoulderR=rot({x: FIG.shoulderWidth,y:torsoLen},sinL,cosL,anchor);
+    const headCenter=rot({x:0,y:torsoLen-15},sinL,cosL,anchor);
+    function arm(sh,sa,eb) {
+      const ur=(sa+s.bodyLean)*Math.PI/180, elbow={x:sh.x+FIG.upperArm*Math.sin(ur),y:sh.y+FIG.upperArm*Math.cos(ur)};
+      const fr=(sa+s.bodyLean+eb)*Math.PI/180, hand={x:elbow.x+FIG.forearm*Math.sin(fr),y:elbow.y+FIG.forearm*Math.cos(fr)};
+      return {elbow,hand};
+    }
+    const aL=arm(shoulderL,s.shoulderL,s.elbowL), aR=arm(shoulderR,s.shoulderR,s.elbowR);
+    return { pelvis:{x:0,y:pelvisY},hipL,hipR,kneeL:lL.knee,kneeR:lR.knee,footL:lL.foot,footR:lR.foot,
+      shoulderL,shoulderR,elbowL:aL.elbow,elbowR:aR.elbow,handL:aL.hand,handR:aR.hand,head:headCenter };
+  }
+  applyState() {
+    const s=this.state, j=this.getJoints(), flip=s.facing===-1?-1:1;
+    this.root.setAttribute('transform',`translate(${s.x},${s.y}) scale(${flip*s.scale},${s.scale})`);
+    this.bodyWrap.setAttribute('transform',`translate(0,${s.bodyBob})`);
+    const set=(el,x1,y1,x2,y2)=>{ el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2); };
+    const circ=(el,cx,cy)=>{ el.setAttribute('cx',cx);el.setAttribute('cy',cy); };
+    set(this.legLThigh,j.hipL.x,j.hipL.y,j.kneeL.x,j.kneeL.y);
+    set(this.legLShin,j.kneeL.x,j.kneeL.y,j.footL.x,j.footL.y);
+    circ(this.legLFoot,j.footL.x,j.footL.y);
+    set(this.legRThigh,j.hipR.x,j.hipR.y,j.kneeR.x,j.kneeR.y);
+    set(this.legRShin,j.kneeR.x,j.kneeR.y,j.footR.x,j.footR.y);
+    circ(this.legRFoot,j.footR.x,j.footR.y);
+    const nX=(j.shoulderL.x+j.shoulderR.x)/2, nY=(j.shoulderL.y+j.shoulderR.y)/2;
+    set(this.torso,j.pelvis.x,j.pelvis.y,nX,nY);
+    circ(this.head,j.head.x,j.head.y);
+    if (this.cap) { this.cap.setAttribute('transform',`translate(${j.head.x},${j.head.y-FIG.headRadius+1}) rotate(${s.bodyLean})`); this.cap.setAttribute('opacity',s.hasCap?1:0); }
+    if (this.helmet) { this.helmet.setAttribute('transform',`translate(${j.head.x},${j.head.y-FIG.headRadius+2})`); this.helmet.setAttribute('opacity',s.helmetOn?1:0); }
+    set(this.armLUpper,j.shoulderL.x,j.shoulderL.y,j.elbowL.x,j.elbowL.y);
+    set(this.armLFore,j.elbowL.x,j.elbowL.y,j.handL.x,j.handL.y);
+    circ(this.handL,j.handL.x,j.handL.y);
+    set(this.armRUpper,j.shoulderR.x,j.shoulderR.y,j.elbowR.x,j.elbowR.y);
+    set(this.armRFore,j.elbowR.x,j.elbowR.y,j.handR.x,j.handR.y);
+    circ(this.handR,j.handR.x,j.handR.y);
+    if (this.heldItemL) this.heldItemL.setAttribute('transform',`translate(${j.handL.x},${j.handL.y})`);
+    if (this.heldItemR) this.heldItemR.setAttribute('transform',`translate(${j.handR.x},${j.handR.y})`);
+    if (this.heart) {
+      const cx=(j.shoulderL.x+j.shoulderR.x+j.pelvis.x*2)/4, cy=(j.shoulderL.y+j.shoulderR.y)/2+15;
+      this.heart.setAttribute('transform',`translate(${cx},${cy}) scale(${s.heartScale})`);
+      this.heart.setAttribute('opacity',s.heartVisible?1:0);
+    }
+    if (this.backpack) this.backpack.setAttribute('transform',`translate(0,${s.hipDrop}) rotate(${s.bodyLean} 0 ${FIG.pelvisY})`);
+  }
+  face(d) { this.state.facing=(d==='left'||d===-1)?-1:1; this.applyState(); }
+  holdItem(h,m) { const t=h==='L'?this.heldItemL:this.heldItemR; t.innerHTML=m; t.setAttribute('opacity',1); }
+  releaseItem(h) { const t=h==='L'?this.heldItemL:this.heldItemR; t.innerHTML=''; t.setAttribute('opacity',0); }
+  snapshot() { return JSON.parse(JSON.stringify(this.state)); }
+}
+window.LongWalk.Figure = Figure;
+window.LongWalk.FIG_CONST = FIG;
+window.LongWalk.FIGURE_COLOR = '#5BAADC';
+})();
+</script>
+
+<!-- ============================================================ ACTIONS ============================================================ -->
+<script>
+(function() {
+'use strict';
+const { tween, parallel, wait, loop, EASE } = window.LongWalk;
+
+function startWalkCycle(fig, opts={}) {
+  const step = opts.stepDuration||580; let stopped=false; const t0=performance.now();
+  function frame() {
+    if (stopped) return;
+    const t=((performance.now()-t0)%step)/step, ph=Math.sin(t*Math.PI*2), ph2=Math.cos(t*Math.PI*2);
+    const swL=Math.max(0,Math.sin(t*Math.PI*2)), swR=Math.max(0,-Math.sin(t*Math.PI*2));
+    fig.state.hipAngL=ph*24; fig.state.hipAngR=-ph*24;
+    fig.state.kneeL=swL*38; fig.state.kneeR=swR*38;
+    fig.state.shoulderL=-ph*17; fig.state.shoulderR=ph*17;
+    fig.state.elbowL=18+swR*16; fig.state.elbowR=18+swL*16;
+    fig.state.bodyBob=(Math.abs(ph2)-0.5)*3;
+    fig.applyState(); requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  return { stop() { stopped=true; return tween({from:0,to:1,duration:280,easing:EASE.easeOut,onUpdate:(p)=>{ ['hipAngL','hipAngR','kneeL','kneeR','shoulderL','shoulderR','elbowL','elbowR','bodyBob'].forEach(k=>{fig.state[k]*=(1-p);}); fig.applyState(); }}); } };
+}
+
+async function walkTo(fig, tx, opts={}) {
+  const sx=fig.state.x, dist=Math.abs(tx-sx), dur=(dist/(opts.speed||250))*1000;
+  if (tx>sx) fig.face('right'); else if (tx<sx) fig.face('left');
+  const walk=startWalkCycle(fig,opts);
+  await tween({from:sx,to:tx,duration:dur,easing:EASE.linear,onUpdate:(x)=>{fig.state.x=x;fig.applyState();}});
+  await walk.stop();
+}
+
+async function walkToCarrying(fig, tx, opts={}) {
+  const hh=opts.hand||'R', sx=fig.state.x, dist=Math.abs(tx-sx), dur=(dist/(opts.speed||250))*1000;
+  if (tx>sx) fig.face('right'); else if (tx<sx) fig.face('left');
+  let stopped=false; const t0=performance.now(); const step=580;
+  function frame() {
+    if (stopped) return;
+    const t=((performance.now()-t0)%step)/step, ph=Math.sin(t*Math.PI*2), ph2=Math.cos(t*Math.PI*2);
+    const swL=Math.max(0,Math.sin(t*Math.PI*2)), swR=Math.max(0,-Math.sin(t*Math.PI*2));
+    fig.state.hipAngL=ph*24; fig.state.hipAngR=-ph*24; fig.state.kneeL=swL*38; fig.state.kneeR=swR*38;
+    if (hh==='R') { fig.state.shoulderR=12+ph*2; fig.state.elbowR=60; fig.state.shoulderL=-ph*14; fig.state.elbowL=18+swR*16; }
+    else { fig.state.shoulderL=-12-ph*2; fig.state.elbowL=60; fig.state.shoulderR=ph*14; fig.state.elbowR=18+swL*16; }
+    fig.state.bodyBob=(Math.abs(ph2)-0.5)*3; fig.applyState(); requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  await tween({from:sx,to:tx,duration:dur,easing:EASE.linear,onUpdate:(x)=>{fig.state.x=x;}});
+  stopped=true;
+  await tween({from:0,to:1,duration:250,easing:EASE.easeOut,onUpdate:(p)=>{ ['hipAngL','hipAngR','kneeL','kneeR','bodyBob'].forEach(k=>{fig.state[k]*=(1-p);}); fig.applyState(); }});
+}
+
+function _tweenPose(fig, target, dur=600, eas=window.LongWalk.EASE.easeInOut) {
+  const start=fig.snapshot();
+  return window.LongWalk.tween({from:0,to:1,duration:dur,easing:eas,
+    onUpdate:(p)=>{ for (const k of Object.keys(target)) { if (typeof target[k]==='number'&&typeof start[k]==='number') fig.state[k]=start[k]+(target[k]-start[k])*p; else fig.state[k]=target[k]; } fig.applyState(); }});
+}
+function _restPose() { return {bodyLean:0,hipDrop:0,bodyBob:0,shoulderL:0,shoulderR:0,elbowL:0,elbowR:0,hipAngL:0,hipAngR:0,kneeL:0,kneeR:0}; }
+async function sitDown(fig,opts={}) { await _tweenPose(fig,{bodyLean:5,hipDrop:25,hipAngL:85,hipAngR:85,kneeL:85,kneeR:85,shoulderL:0,shoulderR:0,elbowL:0,elbowR:0,bodyBob:0},opts.duration||700); }
+async function standUp(fig,opts={}) { await _tweenPose(fig,_restPose(),opts.duration||700); }
+async function setPosture(fig,mood,opts={}) {
+  const t=({confident:{bodyLean:-3,shoulderL:-8,shoulderR:8,elbowL:0,elbowR:0},neutral:{bodyLean:0,shoulderL:0,shoulderR:0,elbowL:0,elbowR:0},slumped:{bodyLean:12,shoulderL:8,shoulderR:-8,elbowL:5,elbowR:5},defeated:{bodyLean:18,shoulderL:12,shoulderR:-12,elbowL:8,elbowR:8}})[mood]||_restPose();
+  await _tweenPose(fig,t,opts.duration||600);
+}
+function typeAt(fig,opts={}) {
+  const start=fig.snapshot(), tp={shoulderL:15,shoulderR:15,elbowL:80,elbowR:80};
+  let stopped=false, res=null;
+  const p=new Promise(r=>{res=r;});
+  const p1=window.LongWalk.tween({from:0,to:1,duration:opts.lerpDuration||400,
+    onUpdate:(v)=>{ ['shoulderL','shoulderR','elbowL','elbowR'].forEach(k=>{fig.state[k]=start[k]+(tp[k]-start[k])*v;}); fig.applyState(); }});
+  let lh=null;
+  p1.then(()=>{ if(stopped) return; lh=window.LongWalk.loop({duration:300,easing:window.LongWalk.EASE.linear,
+    onUpdate:(t)=>{ if(stopped) return; const ph=Math.sin(t*Math.PI*2); fig.state.elbowL=80+ph*3; fig.state.elbowR=80-ph*3; fig.state.shoulderL=15+ph*1.5; fig.state.shoulderR=15-ph*1.5; fig.applyState(); }}); });
+  return { async stop(rt=null) { stopped=true; if(lh) lh.stop(); if(rt) await _tweenPose(fig,rt,opts.unlerpDuration||350); res(); }, promise:p };
+}
+async function showHeart(fig,on=true,opts={}) {
+  fig.state.heartVisible=true;
+  await window.LongWalk.tween({from:on?0:1,to:on?1:0,duration:opts.duration||500,easing:window.LongWalk.EASE.easeOut,onUpdate:(v)=>{fig.state.heartScale=v;fig.applyState();}});
+  if(!on) fig.state.heartVisible=false; fig.applyState();
+}
+
+window.LongWalk.actions = { walkTo, walkToCarrying, sitDown, standUp, setPosture, typeAt, showHeart, startWalkCycle, _tweenPose, _restPose };
+})();
+</script>
+
+<!-- ============================================================ HELPERS ============================================================ -->
+<script>
+(function() {
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+const { tween, EASE } = window.LongWalk;
+function svg(tag,attrs) { const e=document.createElementNS(NS,tag); if(attrs) for(const k in attrs) if(attrs[k]!==undefined&&attrs[k]!==null) e.setAttribute(k,attrs[k]); return e; }
+function group(t) { const g=svg('g'); if(t) g.setAttribute('transform',t); return g; }
+function ground(y=920,col='#E8D5B4',op=0.28) { return svg('line',{x1:0,y1:y,x2:1920,y2:y,stroke:col,'stroke-opacity':op,'stroke-width':2}); }
+async function fadeIn(e,d=400) { await tween({from:0,to:1,duration:d,easing:EASE.easeOut,onUpdate:(v)=>e.setAttribute('opacity',v)}); }
+async function fadeOut(e,d=400) { await tween({from:1,to:0,duration:d,easing:EASE.easeIn,onUpdate:(v)=>e.setAttribute('opacity',v)}); }
+async function flashBanner(e,opts={}) {
+  await tween({from:0,to:1,duration:200,easing:EASE.easeOut,onUpdate:(v)=>e.setAttribute('opacity',v)});
+  await window.LongWalk.wait(opts.hold||1400);
+  await tween({from:1,to:0,duration:400,easing:EASE.easeIn,onUpdate:(v)=>e.setAttribute('opacity',v)});
+}
+function makeGradient(id,colors) {
+  const g=svg('linearGradient',{id,x1:0,y1:0,x2:0,y2:1});
+  for(let i=0;i<colors.length;i++) g.appendChild(svg('stop',{offset:`${(i/(colors.length-1))*100}%`,'stop-color':colors[i]}));
+  return g;
+}
+function stars(opts={}) {
+  const g=group();
+  for(let i=0;i<(opts.count||12);i++) {
+    const x=Math.random()*1920,y=Math.random()*450,r=Math.random()*1.5+1,dur=Math.random()*3+2;
+    const s=svg('circle',{cx:x,cy:y,r,fill:'#FFF',opacity:0.6});
+    s.appendChild(svg('animate',{attributeName:'opacity',values:'0.2;0.9;0.2',dur:dur+'s',repeatCount:'indefinite',begin:(Math.random()*2)+'s'}));
+    g.appendChild(s);
+  }
+  return g;
+}
+function desk(opts) {
+  const x=opts.x,gY=opts.groundY||920,w=opts.width||240,topY=opts.topY||(gY-90);
+  const col=opts.color||'#1E2840',acc=opts.accent||'#2A3850',lc='#0C0F18',fd=opts.figureSide||'left',dir=fd==='left'?1:-1;
+  const g=group(`translate(${x},0)`);
+  g.appendChild(svg('rect',{x:0,y:topY,width:w*dir,height:10,fill:acc}));
+  g.appendChild(svg('rect',{x:0,y:topY+10,width:w*dir,height:3,fill:'#0A0C10',opacity:0.4}));
+  g.appendChild(svg('rect',{x:dir>0?4:-10,y:topY+13,width:6,height:gY-topY-13,fill:lc}));
+  g.appendChild(svg('rect',{x:dir>0?w-12:-w+6,y:topY+13,width:6,height:gY-topY-13,fill:lc}));
+  return g;
+}
+function chair(opts) {
+  const x=opts.x,gY=opts.groundY||920,st=opts.seatTop||(gY-51),sw=opts.width||80,col=opts.color||'#1A2030';
+  const fac=opts.facing||'right',bd=fac==='right'?-1:1;
+  const g=group(`translate(${x},0)`);
+  g.appendChild(svg('rect',{x:bd>0?sw/2:-sw/2-8,y:st-100,width:8,height:100,fill:col}));
+  g.appendChild(svg('rect',{x:bd>0?sw/2-4:-sw/2-12,y:st-100,width:18,height:6,fill:col}));
+  g.appendChild(svg('rect',{x:-sw/2,y:st,width:sw,height:10,fill:col}));
+  g.appendChild(svg('rect',{x:-sw/2+2,y:st+12,width:5,height:gY-st-12,fill:col}));
+  g.appendChild(svg('rect',{x:sw/2-7,y:st+12,width:5,height:gY-st-12,fill:col}));
+  return g;
+}
+function deskSetup(opts) {
+  const fx=opts.figureX,fac=opts.facing||'right',gY=opts.groundY||920,dir=fac==='right'?1:-1;
+  const cg=chair({x:fx,groundY:gY,facing:fac,seatTop:opts.seatTop||(gY-51),color:opts.chairColor||'#1A2030'});
+  const dfx=fx+dir*55;
+  const dg=desk({x:dfx,groundY:gY,width:opts.deskWidth||240,topY:opts.deskTopY||(gY-90),color:opts.deskColor||'#1E2840',accent:opts.deskAccent||'#2A3850',figureSide:fac==='right'?'left':'right'});
+  return {chair:cg,desk:dg};
+}
+function monitor(opts) {
+  const x=opts.x,topY=opts.topY,h=opts.height||100,glow=opts.glow||'#5BA8E5',fac=opts.facing||'left',dir=fac==='right'?1:-1;
+  const g=group(`translate(${x},${topY})`);
+  g.appendChild(svg('rect',{x:-2,y:0,width:4,height:h,fill:'#101420',stroke:'#1E2840','stroke-width':1.5}));
+  g.appendChild(svg('rect',{x:dir>0?0.5:-3,y:2,width:2.5,height:h-4,fill:glow,opacity:0.85}));
+  g.appendChild(svg('rect',{x:-3,y:-1,width:6,height:2,fill:'#1E2840'}));
+  g.appendChild(svg('rect',{x:-2,y:h,width:4,height:14,fill:'#101420'}));
+  g.appendChild(svg('rect',{x:-10,y:h+12,width:20,height:4,fill:'#101420'}));
+  return g;
+}
+function laptop(opts) {
+  const x=opts.x,y=opts.y,bd=opts.depth||36,th=5,sh=opts.height||32,fac=opts.facing||'right',dir=fac==='right'?1:-1;
+  const g=group(`translate(${x},${y})`);
+  const bx=0,bbx=-dir*bd,mn=Math.min(bx,bbx),bw=Math.abs(bd);
+  g.appendChild(svg('rect',{x:mn,y:-th,width:bw,height:th,fill:'#101420',stroke:'#1E2840','stroke-width':1.2}));
+  g.appendChild(svg('rect',{x:mn+1,y:-th,width:bw-2,height:1,fill:'#2A3850'}));
+  const sg=group(`translate(${bbx},${-th}) rotate(${10*-dir})`);
+  sg.appendChild(svg('rect',{x:0,y:-sh,width:3.5,height:sh,fill:'#101420',stroke:'#1E2840','stroke-width':1.2}));
+  const dsx=dir>0?0:3.5;
+  sg.appendChild(svg('rect',{x:dsx-0.5,y:-sh+2,width:1.5,height:sh-4,fill:opts.glow||'#F97316',opacity:0.7}));
+  g.appendChild(sg);
+  return g;
+}
+function aircraft(opts) {
+  const x=opts.x||960,y=opts.y||500,sc=opts.scale||1,col=opts.color||'#2A3550';
+  const g=group(`translate(${x},${y})`); g.setAttribute('opacity',opts.opacity||1);
+  const gc=group(`scale(${sc})`);
+  gc.appendChild(svg('ellipse',{cx:0,cy:0,rx:220,ry:28,fill:col,stroke:'#3A4560','stroke-width':2}));
+  gc.appendChild(svg('path',{d:'M 220 0 Q 260 -10 270 0 Q 260 10 220 0',fill:col}));
+  gc.appendChild(svg('path',{d:'M -210 0 L -240 -55 L -190 -10 Z',fill:col,stroke:'#3A4560','stroke-width':1.5}));
+  gc.appendChild(svg('path',{d:'M -215 3 L -250 28 L -185 8 Z',fill:col,stroke:'#3A4560','stroke-width':1.5}));
+  gc.appendChild(svg('path',{d:'M -30 0 L -80 -90 L 130 -12 L 100 0 Z',fill:col,stroke:'#3A4560','stroke-width':1.5}));
+  gc.appendChild(svg('path',{d:'M -20 3 L -70 90 L 140 15 L 110 3 Z',fill:col,stroke:'#3A4560','stroke-width':1.5}));
+  gc.appendChild(svg('ellipse',{cx:60,cy:-25,rx:30,ry:10,fill:'#1A2238',stroke:'#3A4560','stroke-width':1.5}));
+  for(let i=0;i<5;i++) gc.appendChild(svg('ellipse',{cx:160-i*35,cy:-8,rx:7,ry:5,fill:'#4A7AAA',opacity:0.8}));
+  g.appendChild(gc);
+  return g;
+}
+function hangar(opts) {
+  const x=opts.x||1500,gY=opts.groundY||920,w=opts.width||400,h=opts.height||320;
+  const g=group(`translate(${x},${gY})`);
+  g.appendChild(svg('path',{d:`M 0 ${-h} Q ${w/2} ${-h-60} ${w} ${-h} L ${w} 0 L 0 0 Z`,fill:'#1A2238',stroke:'#2A3550','stroke-width':3}));
+  g.appendChild(svg('rect',{x:w/4,y:-180,width:w/2,height:180,fill:'#090C12',opacity:0.95}));
+  g.appendChild(svg('rect',{x:w/4,y:-182,width:w/2,height:6,rx:2,fill:'#F97316',opacity:0.55}));
+  g.appendChild(svg('rect',{x:w/4-2,y:-182,width:5,height:182,fill:'#2A3550'}));
+  g.appendChild(svg('rect',{x:w/4+w/2-3,y:-182,width:5,height:182,fill:'#2A3550'}));
+  for(let i=0;i<5;i++) { g.appendChild(svg('circle',{cx:20,cy:-60-i*40,r:3,fill:'#2A3550'})); g.appendChild(svg('circle',{cx:w-20,cy:-60-i*40,r:3,fill:'#2A3550'})); }
+  return g;
+}
+function controlTower(opts) {
+  const x=opts.x||1700,gY=opts.groundY||920;
+  const g=group(`translate(${x},${gY})`);
+  g.appendChild(svg('rect',{x:-18,y:-280,width:36,height:280,fill:'#1A2238'}));
+  g.appendChild(svg('rect',{x:-28,y:-200,width:56,height:60,fill:'#1A2238'}));
+  g.appendChild(svg('rect',{x:-40,y:-320,width:80,height:50,rx:4,fill:'#1E2840',stroke:'#2A3860','stroke-width':2}));
+  g.appendChild(svg('rect',{x:-34,y:-315,width:68,height:30,rx:2,fill:'#4A7AAA',opacity:0.45}));
+  g.appendChild(svg('line',{x1:0,y1:-320,x2:0,y2:-370,stroke:'#3A4560','stroke-width':2}));
+  const blink=svg('circle',{cx:0,cy:-370,r:4,fill:'#F97316'});
+  blink.appendChild(svg('animate',{attributeName:'opacity',values:'1;0.2;1',dur:'2s',repeatCount:'indefinite'}));
+  g.appendChild(blink);
+  return g;
+}
+function speechBubble(opts) {
+  const x=opts.x,y=opts.y,w=opts.width||130,h=opts.height||60,lines=opts.lines||2,td=opts.tailDir||'down-left';
+  const g=group(`translate(${x},${y})`);
+  g.appendChild(svg('rect',{x:-w/2,y:-h/2,width:w,height:h,rx:14,fill:'#FFFFFF',stroke:'#0A0C10','stroke-width':2}));
+  let tail;
+  if(td==='down-left') tail=svg('polygon',{points:`${-w/4},${h/2-2} ${-w/4-6},${h/2+18} ${-w/4+10},${h/2-2}`,fill:'#FFFFFF',stroke:'#0A0C10','stroke-width':2});
+  else if(td==='down-right') tail=svg('polygon',{points:`${w/4},${h/2-2} ${w/4+6},${h/2+18} ${w/4-10},${h/2-2}`,fill:'#FFFFFF',stroke:'#0A0C10','stroke-width':2});
+  if(tail) g.appendChild(tail);
+  g.appendChild(svg('rect',{x:-w/2+2,y:-h/2+2,width:w-4,height:h-4,rx:12,fill:'#FFFFFF'}));
+  for(let i=0;i<lines;i++) { const ly=-h/2+18+i*20; g.appendChild(svg('path',{d:`M ${-w/2+14} ${ly} q 10 -8 20 0 t 20 0 t 20 0`,stroke:'#0A0C10','stroke-width':2.5,fill:'none','stroke-linecap':'round'})); }
+  g.setAttribute('opacity',0);
+  return g;
+}
+function outcomeBanner(text,opts={}) {
+  const x=opts.x||960,y=opts.y||480,col=opts.color||'#D4533F';
+  const g=group(`translate(${x},${y})`); g.setAttribute('opacity',0);
+  const t=svg('text',{'text-anchor':'middle','font-family':'Syne, sans-serif','font-size':88,'font-weight':700,'letter-spacing':10,fill:col,stroke:'#0A0C10','stroke-width':2});
+  t.textContent=text; g.appendChild(t);
+  return g;
+}
+function certBadge(opts) {
+  const x=opts.x,y=opts.y,label=opts.label||'Sec+',col=opts.color||'#5BA8E5',s=28;
+  const g=group(`translate(${x},${y})`); g.setAttribute('opacity',0);
+  const pts=[]; for(let i=0;i<6;i++){const a=i*Math.PI/3-Math.PI/6;pts.push(`${Math.cos(a)*s},${Math.sin(a)*s}`);}
+  g.appendChild(svg('polygon',{points:pts.join(' '),fill:col,stroke:'#0A0C10','stroke-width':2}));
+  const t=svg('text',{x:0,y:5,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':11,'font-weight':500,fill:'#FFF'});
+  t.textContent=label; g.appendChild(t);
+  return g;
+}
+function conceptWord(opts) {
+  const g=group(`translate(${opts.x},${opts.y})`); g.setAttribute('opacity',0);
+  const t=svg('text',{x:0,y:0,'text-anchor':'middle','font-family':'Fraunces,serif','font-size':opts.fontSize||18,'font-style':'italic',fill:opts.color||'#E8D5B4','letter-spacing':1,opacity:0.85});
+  t.textContent=opts.text||''; g.appendChild(t);
+  return g;
+}
+function checkmark(opts) {
+  const x=opts.x,y=opts.y,sz=opts.size||30,col=opts.color||'#4ADE80',s=sz*0.6;
+  const g=group(`translate(${x},${y})`); g.setAttribute('opacity',0);
+  g.appendChild(svg('circle',{cx:0,cy:0,r:sz,fill:col,stroke:'#0A0C10','stroke-width':2}));
+  g.appendChild(svg('path',{d:`M ${-s/2} 0 L ${-s/6} ${s/2.5} L ${s/2} ${-s/2}`,stroke:'#FFF','stroke-width':5,fill:'none','stroke-linecap':'round','stroke-linejoin':'round'}));
+  return g;
+}
+// Company milestone sign — appears in the world when figure walks past
+function companyMilestone(opts) {
+  const x=opts.x, gY=opts.groundY||920, label=opts.label||'COMPANY', sub=opts.sub||'', col=opts.color||'#5BAADC';
+  const g=group(`translate(${x},0)`); g.setAttribute('opacity',0);
+  // Post
+  g.appendChild(svg('rect',{x:-3,y:gY-200,width:6,height:200,fill:'#1A2238'}));
+  // Sign board
+  g.appendChild(svg('rect',{x:-90,y:gY-210,width:180,height:60,rx:4,fill:'#101420',stroke:col,'stroke-width':2}));
+  const t=svg('text',{x:0,y:gY-175,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':16,'font-weight':500,fill:col,'letter-spacing':2});
+  t.textContent=label; g.appendChild(t);
+  if(sub) {
+    const s=svg('text',{x:0,y:gY-158,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':10,fill:'#E8D5B4',opacity:0.65,'letter-spacing':1});
+    s.textContent=sub; g.appendChild(s);
+  }
+  // Years tag
+  if(opts.years) {
+    const yt=svg('text',{x:0,y:gY-138,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':9,fill:col,opacity:0.7});
+    yt.textContent=opts.years; g.appendChild(yt);
+  }
+  return g;
+}
+// Rejection email card (ATS/resume stage — no interview language)
+function rejectionEmail(opts) {
+  const x=opts.x,y=opts.y,w=opts.width||310,h=opts.height||72,co=opts.company||'TechCo';
+  const g=group(`translate(${x},${y})`); g.setAttribute('opacity',0);
+  g.appendChild(svg('rect',{x:-w/2,y:-h/2,width:w,height:h,rx:5,fill:'#F5F4F0',stroke:'#0A0C10','stroke-width':1.5}));
+  g.appendChild(svg('rect',{x:-w/2,y:-h/2,width:5,height:h,fill:'#D4533F',rx:2}));
+  // Email icon
+  g.appendChild(svg('rect',{x:-w/2+12,y:-h/2+14,width:22,height:16,rx:2,fill:'none',stroke:'#888','stroke-width':1.2}));
+  g.appendChild(svg('path',{d:`M ${-w/2+12} ${-h/2+14} L ${-w/2+23} ${-h/2+22} L ${-w/2+34} ${-h/2+14}`,fill:'none',stroke:'#888','stroke-width':1.2}));
+  const t1=svg('text',{x:-w/2+42,y:-h/2+24,'font-family':'Syne,sans-serif','font-size':13,'font-weight':600,fill:'#1F1610'});
+  t1.textContent=co+' — Application Status'; g.appendChild(t1);
+  const t2=svg('text',{x:-w/2+42,y:-h/2+44,'font-family':'DM Mono,monospace','font-size':11,fill:'#5A5060'});
+  t2.textContent=opts.message||'After careful review, we will not be moving forward...'; g.appendChild(t2);
+  const t3=svg('text',{x:w/2-14,y:-h/2+24,'text-anchor':'end','font-family':'DM Mono,monospace','font-size':10,fill:'#9A9095'});
+  t3.textContent=opts.time||'now'; g.appendChild(t3);
+  return g;
+}
+// WGU enrollment door
+function wguDoor(opts={}) {
+  const x=opts.x||1700,gY=opts.groundY||920;
+  const g=group(`translate(${x},${gY})`);
+  g.appendChild(svg('ellipse',{cx:0,cy:-90,rx:120,ry:150,fill:'#5BAADC',opacity:0.12}));
+  g.appendChild(svg('rect',{x:-62,y:-172,width:124,height:172,fill:'#F0E8D8',opacity:0.9}));
+  g.appendChild(svg('rect',{x:-68,y:-178,width:136,height:14,fill:'#1A2840',rx:2}));
+  const t1=svg('text',{x:0,y:-110,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':22,'font-weight':500,fill:'#1A2840','letter-spacing':4});
+  t1.textContent='WGU'; g.appendChild(t1);
+  const t2=svg('text',{x:0,y:-86,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':10,fill:'#1A2840','letter-spacing':2});
+  t2.textContent='BS CYBERSECURITY'; g.appendChild(t2);
+  const t3=svg('text',{x:0,y:-64,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':9,fill:'#4A6080','letter-spacing':1});
+  t3.textContent='enrollment →'; g.appendChild(t3);
+  // Glow line at base
+  g.appendChild(svg('rect',{x:-62,y:-2,width:124,height:4,fill:'#5BAADC',opacity:0.6}));
+  return g;
+}
+
+const GRADIENTS = {
+  hangar:  ['#0C111A','#141B28','#1A2238','#090C12'],
+  dawn:    ['#151A2E','#1A2240','#22304A','#090C12'],
+  study:   ['#0F1420','#141A2E','#1A2038','#090C12'],
+  careers: ['#0C1018','#121820','#1A2230','#090C12'],
+  blue:    ['#080E1C','#101828','#182030','#060810'],
+  warm:    ['#180E0A','#261810','#321E14','#0E0908'],
+  silence: ['#120808','#1C0E0E','#240E0E','#0A0404'],
+  final:   ['#0C1018','#121828','#1A2038','#080C14'],
+};
+
+window.LongWalk.help = {
+  svg,group,ground,fadeIn,fadeOut,flashBanner,makeGradient,GRADIENTS,stars,
+  desk,chair,deskSetup,monitor,laptop,
+  aircraft,hangar,controlTower,wguDoor,
+  companyMilestone,speechBubble,outcomeBanner,certBadge,conceptWord,checkmark,rejectionEmail,
+};
+})();
+</script>
+
+<!-- ============================================================ SCENES ============================================================ -->
+<script>
+(function() {
+'use strict';
+const { actions, wait, parallel, tween, EASE } = window.LongWalk;
+const { svg, group, ground, fadeIn, fadeOut, flashBanner, makeGradient, GRADIENTS, stars,
+        desk, chair, deskSetup, monitor, laptop,
+        aircraft, hangar, controlTower, wguDoor,
+        companyMilestone, speechBubble, outcomeBanner, certBadge, conceptWord, checkmark, rejectionEmail } = window.LongWalk.help;
+
+// ──────────────────────────────────────────────────────────────────────
+// SCENE 1 — USAF: The Hangar
+// ──────────────────────────────────────────────────────────────────────
+const SCENE_1 = {
+  id:'scene1', gradient:'hangar',
+  chapter:'CHAPTER 01 — USAF',
+  title:'The Hangar',
+  narrative:'I started as an aircraft mechanic in the United States Air Force. Jet engines. Technical orders. Safety-critical systems where a mistake could cost lives. That precision became my foundation.',
+  resource:{ label:'USAF mechanic to civilian career', text:'Military aviation experience translates directly: FAA A&P license eligibility, safety-critical systems discipline, technical documentation, and team operations under pressure — all recognized by civilian employers.' },
+  setup(ctx) {
+    ctx.worldLayer.appendChild(stars({count:10}));
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:720,width:1920,height:360,fill:'#0A0D14'}));
+    // Tarmac markings
+    for(let i=0;i<7;i++) ctx.worldLayer.appendChild(svg('rect',{x:150+i*270,y:895,width:110,height:5,rx:2,fill:'#E8D5B4',opacity:0.07}));
+    ctx.worldLayer.appendChild(hangar({x:1050,groundY:920,width:620,height:360}));
+    ctx.worldLayer.appendChild(controlTower({x:240,groundY:920}));
+    ctx.worldLayer.appendChild(aircraft({x:1360,y:755,scale:0.52,opacity:0.38,color:'#1E2840'}));
+    // USAF roundel (simplified star-in-circle on hangar)
+    const rnd=group('translate(1360,610)');
+    rnd.appendChild(svg('circle',{cx:0,cy:0,r:32,fill:'#1A3060',stroke:'#2A4A80','stroke-width':2}));
+    rnd.appendChild(svg('polygon',{points:'0,-20 5,-8 18,-8 8,0 12,14 0,6 -12,14 -8,0 -18,-8 -5,-8',fill:'#FFFFFF',opacity:0.85}));
+    ctx.worldLayer.appendChild(rnd);
+    // Runway lights
+    for(let i=0;i<8;i++) {
+      const rl=svg('circle',{cx:80+i*250,cy:916,r:4,fill:'#F97316',opacity:0.45});
+      rl.appendChild(svg('animate',{attributeName:'opacity',values:'0.25;0.75;0.25',dur:'3s',repeatCount:'indefinite',begin:(i*0.45)+'s'}));
+      ctx.worldLayer.appendChild(rl);
+    }
+    ctx.worldLayer.appendChild(ground());
+  },
+  async play(ctx) {
+    const {fig}=ctx;
+    fig.state.x=100; fig.state.y=920; fig.state.facing=1; fig.state.scale=1.7;
+    fig.state.helmetOn=true; fig.releaseItem('L'); fig.releaseItem('R');
+    fig.applyState();
+    await wait(600);
+    await actions.walkTo(fig,480,{speed:220});
+    // Raise right arm (reach toward aircraft)
+    await tween({from:0,to:1,duration:700,easing:EASE.easeInOut,
+      onUpdate:(p)=>{fig.state.shoulderR=0+p*32;fig.state.elbowR=0+p*55;fig.applyState();}});
+    fig.holdItem('R',`
+      <rect x="-3" y="-18" width="6" height="28" rx="3" fill="#8A8A9A"/>
+      <ellipse cx="0" cy="-18" rx="7" ry="5" fill="#8A8A9A"/>
+      <circle cx="0" cy="-18" r="3" fill="#101420"/>
+    `);
+    await wait(300);
+    // Walk toward hangar with tool
+    await actions.walkToCarrying(fig,900,{hand:'R',speed:210});
+    // Working lean
+    await tween({from:0,to:1,duration:800,easing:EASE.easeInOut,
+      onUpdate:(p)=>{fig.state.bodyLean=0+p*26;fig.state.hipDrop=0+p*12;fig.applyState();}});
+    await wait(300);
+    // Arm motion — working on engine
+    for(let i=0;i<3;i++) {
+      await tween({from:0,to:1,duration:300,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.shoulderR=32+p*-16;fig.state.elbowR=55+p*22;fig.applyState();}});
+      await tween({from:0,to:1,duration:300,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.shoulderR=16+p*16;fig.state.elbowR=77+p*-22;fig.applyState();}});
+    }
+    await tween({from:0,to:1,duration:600,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.bodyLean=26*(1-p);fig.state.hipDrop=12*(1-p);fig.applyState();}});
+    ctx.showResource();
+    await wait(700);
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// SCENE 2 — The Career Path
+// ──────────────────────────────────────────────────────────────────────
+const SCENE_2 = {
+  id:'scene2', gradient:'careers',
+  chapter:'CHAPTER 02 — The Career Path',
+  title:'Alaska Air · Prime Air · UPS',
+  narrative:'USAF to Alaska Airlines. Then Amazon Prime Air. Then UPS. Each ramp, each aircraft type, each employer — the same core discipline, bigger scale. Years of signing off on safety-critical systems.',
+  resource:{ label:'Aviation experience in your cyber resume', text:'Quantify it: aircraft types maintained, number of safety-critical sign-offs, team size, error rate, regulatory compliance (FAA/DoD). Frame it as: "Maintained zero safety incidents across X aircraft over Y years." Cyber hiring managers respect that rigor.' },
+  setup(ctx) {
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:820,width:1920,height:260,fill:'#0A0D14'}));
+    // Long tarmac road
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:870,width:1920,height:55,fill:'#0C1018'}));
+    ctx.worldLayer.appendChild(svg('line',{x1:0,y1:898,x2:1920,y2:898,stroke:'#E8D5B4','stroke-opacity':0.08,'stroke-width':2,'stroke-dasharray':'40,30'}));
+    // Background aircraft silhouettes
+    ctx.worldLayer.appendChild(aircraft({x:700,y:620,scale:0.38,opacity:0.18,color:'#1E2840'}));
+    ctx.worldLayer.appendChild(aircraft({x:1500,y:640,scale:0.42,opacity:0.15,color:'#1E2840'}));
+    // Place three milestone signs along the road
+    const signs=[
+      companyMilestone({x:380,groundY:920,label:'ALASKA AIR',sub:'Line Maintenance',years:'Commercial Aviation',color:'#5BAADC'}),
+      companyMilestone({x:860,groundY:920,label:'PRIME AIR',sub:'Amazon Fleet',years:'E-Commerce Cargo',color:'#F97316'}),
+      companyMilestone({x:1380,groundY:920,label:'UPS AIRLINES',sub:'Package Ops',years:'Cargo Aviation',color:'#D4A040'}),
+    ];
+    signs.forEach(s=>ctx.worldLayer.appendChild(s));
+    ctx._signs=signs;
+    ctx.worldLayer.appendChild(ground());
+  },
+  async play(ctx) {
+    const {fig}=ctx;
+    fig.state.x=80; fig.state.y=920; fig.state.facing=1; fig.state.scale=1.7;
+    fig.state.helmetOn=true; fig.releaseItem('L'); fig.releaseItem('R');
+    fig.applyState();
+    await wait(500);
+    // Walk to Alaska Air sign, reveal it
+    const [s1,s2,s3]=ctx._signs;
+    await actions.walkTo(fig,260,{speed:250});
+    await fadeIn(s1,600); await wait(400);
+    // Pause and look at sign
+    await tween({from:0,to:1,duration:500,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.shoulderR=0+p*(-12);fig.state.elbowR=0+p*30;fig.applyState();}});
+    await wait(500);
+    await tween({from:0,to:1,duration:400,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.shoulderR=-12*(1-p);fig.state.elbowR=30*(1-p);fig.applyState();}});
+    await actions.walkTo(fig,740,{speed:240});
+    await fadeIn(s2,600); await wait(400);
+    await tween({from:0,to:1,duration:500,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.shoulderR=0+p*(-12);fig.state.elbowR=0+p*30;fig.applyState();}});
+    await wait(500);
+    await tween({from:0,to:1,duration:400,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.shoulderR=-12*(1-p);fig.state.elbowR=30*(1-p);fig.applyState();}});
+    await actions.walkTo(fig,1260,{speed:240});
+    await fadeIn(s3,600); await wait(400);
+    // Years counter floats up
+    const yG=group('translate(1380,580)'); yG.setAttribute('opacity',0);
+    const yt=svg('text',{x:0,y:0,'text-anchor':'middle','font-family':'Fraunces,serif','font-size':32,'font-style':'italic','font-weight':300,fill:'#D4A040',opacity:0.9});
+    yt.textContent='years of precision'; yG.appendChild(yt);
+    ctx.overlayLayer.appendChild(yG);
+    await fadeIn(yG,700);
+    ctx.showResource();
+    await wait(1400);
+    await fadeOut(yG,500);
+    await wait(200);
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// SCENE 3 — The Question
+// ──────────────────────────────────────────────────────────────────────
+const SCENE_3 = {
+  id:'scene3', gradient:'dawn',
+  chapter:'CHAPTER 03 — The Pivot',
+  title:'The Question',
+  narrative:'Aviation taught me to trust systems. Then I started noticing those systems were vulnerable — ACARS, ADS-B, avionics networks — and nobody in the hangar was thinking about that. What if I became the person who did?',
+  resource:{ label:'Aviation cyber is a real sector', text:'Avionics cybersecurity is growing fast: ACARS, ADS-B spoofing, and onboard network segregation are active threat areas. FAA AC 20-168 governs airworthiness cybersecurity. Your insider knowledge of those systems is a genuine edge.' },
+  setup(ctx) {
+    ctx.worldLayer.appendChild(stars({count:16}));
+    ctx.worldLayer.appendChild(svg('ellipse',{cx:960,cy:1080,rx:900,ry:260,fill:'#F97316',opacity:0.05}));
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:840,width:1920,height:240,fill:'#0D1220'}));
+    ctx.worldLayer.appendChild(controlTower({x:1700,groundY:920}));
+    ctx.worldLayer.appendChild(aircraft({x:800,y:680,scale:0.28,opacity:0.2,color:'#1E2840'}));
+    ctx.worldLayer.appendChild(ground());
+  },
+  async play(ctx) {
+    const {fig}=ctx;
+    fig.state.x=400; fig.state.y=920; fig.state.facing=1; fig.state.scale=1.7;
+    fig.state.helmetOn=false; fig.releaseItem('L'); fig.releaseItem('R');
+    fig.applyState();
+    await wait(600);
+    // Thinking pose — hand to chin
+    await tween({from:0,to:1,duration:1000,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.shoulderR=0+p*(-18);fig.state.elbowR=0+p*82;fig.applyState();}});
+    await wait(400);
+    // Concepts float up
+    const specs=[
+      {x:620,y:600,text:'ACARS networks',fontSize:19,color:'#F97316'},
+      {x:820,y:530,text:'ADS-B spoofing',fontSize:17,color:'#5BAADC'},
+      {x:660,y:460,text:'avionics vulnerabilities',fontSize:18,color:'#E8D5B4'},
+      {x:830,y:400,text:'who is defending?',fontSize:22,color:'#F97316'},
+      {x:700,y:340,text:'I could be.',fontSize:28,color:'#5BAADC'},
+    ];
+    for(const c of specs) {
+      const cw=conceptWord(c); ctx.overlayLayer.appendChild(cw);
+      fadeIn(cw,600);
+      const sy=c.y;
+      tween({from:sy,to:sy-50,duration:3500,easing:EASE.easeOut,onUpdate:(y)=>cw.setAttribute('transform',`translate(${c.x},${y})`)});
+      await wait(580);
+    }
+    // Lock icon
+    const lg=group('translate(1020,490)'); lg.setAttribute('opacity',0);
+    lg.appendChild(svg('rect',{x:-22,y:-5,width:44,height:36,rx:5,fill:'#1E2840',stroke:'#5BAADC','stroke-width':2}));
+    lg.appendChild(svg('path',{d:'M -12 -5 L -12 -22 A 12 12 0 0 1 12 -22 L 12 -5',stroke:'#5BAADC','stroke-width':3,fill:'none','stroke-linecap':'round'}));
+    lg.appendChild(svg('circle',{cx:0,cy:12,r:6,fill:'#5BAADC',opacity:0.9}));
+    ctx.overlayLayer.appendChild(lg);
+    await fadeIn(lg,800);
+    ctx.showResource();
+    await wait(1400);
+    // Arm back to neutral
+    await tween({from:0,to:1,duration:600,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.shoulderR=-18*(1-p);fig.state.elbowR=82*(1-p);fig.applyState();}});
+    await wait(400);
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// SCENE 4 — WGU Enrollment
+// ──────────────────────────────────────────────────────────────────────
+const SCENE_4 = {
+  id:'scene4', gradient:'study',
+  chapter:'CHAPTER 04 — Western Governors University',
+  title:'Enrollment',
+  narrative:'I enrolled at WGU for a BS in Cybersecurity. Competency-based. Self-paced. Built for people already working full-time. The same way you qualify on a new aircraft type — you prove the knowledge, not just the hours.',
+  resource:{ label:'Why WGU for career changers', text:'WGU BS Cybersecurity: wgu.edu/online-it-degrees/cybersecurity.html  •  Competency-based: finish faster if you already know the material  •  Industry certs included in tuition (Sec+, Net+, and more)  •  No fixed class schedule — study when you\'re not on shift.' },
+  setup(ctx) {
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:920,width:1920,height:160,fill:'#0F1420'}));
+    ctx.worldLayer.appendChild(svg('path',{d:'M 0 1080 L 0 750 Q 480 700 960 720 T 1920 750 L 1920 1080 Z',fill:'#0F1420'}));
+    ctx.worldLayer.appendChild(wguDoor({x:1680,groundY:920}));
+    ctx.worldLayer.appendChild(stars({count:12}));
+    ctx.worldLayer.appendChild(ground());
+  },
+  async play(ctx) {
+    const {fig}=ctx;
+    fig.state.x=100; fig.state.y=920; fig.state.facing=1; fig.state.scale=1.7;
+    fig.state.helmetOn=false; fig.releaseItem('L'); fig.releaseItem('R');
+    fig.applyState();
+    await wait(500);
+    // Walk toward WGU door
+    await actions.walkTo(fig,1520,{speed:240});
+    fig.face('right');
+    // Look up at the door
+    await tween({from:0,to:1,duration:600,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.bodyLean=0+p*(-4);fig.applyState();}});
+    await wait(500);
+    // Decision moment — slight nod (lean forward and back)
+    await tween({from:0,to:1,duration:400,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.bodyLean=-4+p*6;fig.applyState();}});
+    await tween({from:0,to:1,duration:400,easing:EASE.easeInOut,onUpdate:(p)=>{fig.state.bodyLean=2+p*(-6);fig.applyState();}});
+    await wait(300);
+    // Walk through (toward door — off right edge)
+    const enrollText=group('translate(960,480)'); enrollText.setAttribute('opacity',0);
+    const et=svg('text',{x:0,y:0,'text-anchor':'middle','font-family':'Fraunces,serif','font-size':54,'font-style':'italic','font-weight':300,fill:'#5BAADC'});
+    et.textContent='Enrolled.'; enrollText.appendChild(et);
+    ctx.overlayLayer.appendChild(enrollText);
+    await fadeIn(enrollText,800);
+    // Glow on the WGU door intensifies
+    ctx.showResource();
+    await wait(1800);
+    await fadeOut(enrollText,600);
+    await actions.walkTo(fig,1760,{speed:220});
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// SCENE 5 — Stacking Certs
+// ──────────────────────────────────────────────────────────────────────
+const SCENE_5 = {
+  id:'scene5', gradient:'study',
+  chapter:'CHAPTER 05 — Building the Foundation',
+  title:'Stacking Certs',
+  narrative:'CompTIA A+. Network+. Security+. Each one felt like qualifying on a new aircraft type — different systems, same methodical discipline. The FAA maintenance manual gave way to NIST frameworks.',
+  resource:{ label:'Free & low-cost study resources', text:'Professor Messer (free): professormesser.com  •  Jason Dion (Udemy): cheap and up-to-date  •  CompTIA CertMaster Labs: included with some exam vouchers  •  Anki flashcard decks: free community decks for every CompTIA cert.' },
+  setup(ctx) {
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:920,width:1920,height:160,fill:'#0F1420'}));
+    const {chair:cg,desk:dg}=deskSetup({figureX:760,facing:'right',groundY:920,deskWidth:320});
+    ctx.worldLayer.appendChild(cg); ctx.worldLayer.appendChild(dg);
+    ctx.worldLayer.appendChild(monitor({x:910,topY:717,height:95,glow:'#5BAADC',facing:'left'}));
+    ctx.worldLayer.appendChild(ground());
+  },
+  async play(ctx) {
+    const {fig}=ctx;
+    fig.state.x=100; fig.state.y=920; fig.state.facing=1; fig.state.scale=1.7;
+    fig.state.helmetOn=false; fig.releaseItem('L'); fig.releaseItem('R');
+    fig.applyState();
+    await wait(400);
+    await actions.walkTo(fig,760,{speed:260});
+    await actions.sitDown(fig,{duration:700});
+    const typing=actions.typeAt(fig,{lerpDuration:400});
+    await wait(600);
+    const badges=[
+      {x:360,y:390,label:'A+',color:'#5BAADC'},
+      {x:450,y:340,label:'Net+',color:'#9D6FE5'},
+      {x:545,y:385,label:'Sec+',color:'#F97316'},
+      {x:360,y:295,label:'Linux+',color:'#4ADE80'},
+      {x:495,y:255,label:'CySA+',color:'#F97316'},
+    ];
+    for(const b of badges) {
+      const badge=certBadge(b); ctx.overlayLayer.appendChild(badge);
+      await fadeIn(badge,500); await wait(440);
+    }
+    const concepts=[
+      {x:1350,y:560,text:'TCP/IP model',fontSize:18,color:'#E8D5B4'},
+      {x:1520,y:490,text:'threat modeling',fontSize:16,color:'#5BAADC'},
+      {x:1370,y:425,text:'SIEM & logging',fontSize:18,color:'#E8D5B4'},
+      {x:1540,y:365,text:'vulnerability scanning',fontSize:16,color:'#F97316'},
+      {x:1380,y:310,text:'incident response',fontSize:17,color:'#E8D5B4'},
+    ];
+    for(const c of concepts) {
+      const cw=conceptWord(c); ctx.overlayLayer.appendChild(cw);
+      fadeIn(cw,600);
+      const sy=c.y;
+      tween({from:sy,to:sy-45,duration:3200,easing:EASE.easeOut,onUpdate:(y)=>cw.setAttribute('transform',`translate(${c.x},${y})`)});
+      await wait(470);
+    }
+    ctx.showResource();
+    await wait(1800);
+    await typing.stop();
+    await actions.standUp(fig,{duration:500});
+    await wait(300);
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// SCENE 6 — Home Lab
+// ──────────────────────────────────────────────────────────────────────
+const SCENE_6 = {
+  id:'scene6', gradient:'blue',
+  chapter:'CHAPTER 06 — Building Experience',
+  title:'Home Lab',
+  narrative:'No employer would give me experience — so I built it myself. pfSense. Splunk. Kali Linux. TryHackMe rooms at midnight after shifts. I treated every lab write-up like an FAA maintenance log: document everything.',
+  resource:{ label:'Free lab & practice platforms', text:'TryHackMe: tryhackme.com  •  HackTheBox: hackthebox.com  •  Blue Team Labs Online: blueteamlabs.online  •  Splunk free tier: splunk.com  •  SANS Cyber Aces: cyberaces.org  •  DVWA for web app testing.' },
+  setup(ctx) {
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:920,width:1920,height:160,fill:'#0E1420'}));
+    const {chair:cg,desk:dg}=deskSetup({figureX:820,facing:'right',groundY:920,deskWidth:370});
+    ctx.worldLayer.appendChild(cg); ctx.worldLayer.appendChild(dg);
+    ctx.worldLayer.appendChild(monitor({x:1000,topY:717,height:95,glow:'#5BAADC',facing:'left'}));
+    ctx.worldLayer.appendChild(monitor({x:1125,topY:717,height:95,glow:'#4ADE80',facing:'left'}));
+    // Server rack
+    const rack=group('translate(1500,0)');
+    rack.appendChild(svg('rect',{x:-45,y:580,width:90,height:340,fill:'#101420',stroke:'#1E2840','stroke-width':2}));
+    for(let i=0;i<5;i++) { rack.appendChild(svg('rect',{x:-37,y:595+i*60,width:74,height:35,fill:'#0A0C10',stroke:'#1E2840','stroke-width':1})); rack.appendChild(svg('circle',{cx:-26,cy:612+i*60,r:3,fill:i%2?'#4ADE80':'#5BAADC'})); }
+    ctx.worldLayer.appendChild(rack);
+    // Late-night moon
+    ctx.worldLayer.appendChild(svg('circle',{cx:1720,cy:155,r:38,fill:'#DDD8CC'}));
+    ctx.worldLayer.appendChild(svg('circle',{cx:1734,cy:148,r:33,fill:'#0E1420'}));
+    ctx.worldLayer.appendChild(ground());
+  },
+  async play(ctx) {
+    const {fig}=ctx;
+    fig.state.x=100; fig.state.y=920; fig.state.facing=1; fig.state.scale=1.7;
+    fig.state.helmetOn=false; fig.releaseItem('L'); fig.releaseItem('R');
+    fig.applyState();
+    await wait(500);
+    await actions.walkTo(fig,820,{speed:260});
+    await actions.sitDown(fig,{duration:700});
+    const typing=actions.typeAt(fig,{lerpDuration:400});
+    await wait(600);
+    const labs=[
+      {x:360,y:400,text:'pfsense firewall',fontSize:19,color:'#5BAADC'},
+      {x:480,y:350,text:'splunk SIEM',fontSize:18,color:'#4ADE80'},
+      {x:370,y:298,text:'kali linux',fontSize:18,color:'#F97316'},
+      {x:500,y:252,text:'nmap & wireshark',fontSize:17,color:'#E8D5B4'},
+      {x:370,y:210,text:'TryHackMe CTFs',fontSize:16,color:'#5BAADC'},
+      {x:500,y:174,text:'write-up documentation',fontSize:15,color:'#F97316'},
+    ];
+    for(const c of labs) {
+      const cw=conceptWord(c); ctx.overlayLayer.appendChild(cw);
+      fadeIn(cw,550);
+      const sy=c.y;
+      tween({from:sy,to:sy-40,duration:3000,easing:EASE.easeOut,onUpdate:(y)=>cw.setAttribute('transform',`translate(${c.x},${y})`)});
+      await wait(450);
+    }
+    // Clock shows late hour
+    const cG=group('translate(1680,195)'); cG.setAttribute('opacity',0);
+    const ct=svg('text',{x:0,y:0,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':14,fill:'#F97316','letter-spacing':2});
+    ct.textContent='01:48 AM'; cG.appendChild(ct);
+    ctx.overlayLayer.appendChild(cG); await fadeIn(cG,500);
+    ctx.showResource();
+    await wait(2000);
+    await typing.stop();
+    await actions.standUp(fig,{duration:500});
+    await wait(300);
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// SCENE 7 — Wall of Silence
+// ──────────────────────────────────────────────────────────────────────
+const SCENE_7 = {
+  id:'scene7', gradient:'silence',
+  chapter:'CHAPTER 07 — The Wall',
+  title:'Wall of Silence',
+  narrative:'Resume after resume. Each one rejected before a human ever saw it. No phone screens. No interviews. The ATS filtered me out for missing keywords I had the skills to back up. Just a form email and silence.',
+  resource:{ label:'Breaking through ATS rejections', text:'Mirror the exact keywords from the job posting in your resume. Put Sec+, Net+, and CompTIA certs near the top. Add a "Home Lab Projects" section with specific tools (Splunk, pfSense, Kali). GitHub with documented write-ups signals real ability to any recruiter who looks past the ATS.' },
+  setup(ctx) {
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:920,width:1920,height:160,fill:'#100808'}));
+    // Dim pool of laptop light
+    ctx.worldLayer.appendChild(svg('ellipse',{cx:380,cy:890,rx:220,ry:32,fill:'#5BAADC',opacity:0.04}));
+    ctx.worldLayer.appendChild(ground(920,'#E8D5B4',0.18));
+  },
+  async play(ctx) {
+    const {fig}=ctx;
+    fig.state.x=100; fig.state.y=920; fig.state.facing=1; fig.state.scale=1.7;
+    fig.state.helmetOn=false; fig.releaseItem('L'); fig.releaseItem('R');
+    fig.applyState();
+    await wait(400);
+    await actions.walkTo(fig,360,{speed:220});
+    fig.face('right');
+    // Sit on the ground (no chair — on curb)
+    await tween({from:0,to:1,duration:800,easing:EASE.easeInOut,
+      onUpdate:(p)=>{fig.state.hipDrop=0+p*35;fig.state.hipAngL=0+p*85;fig.state.hipAngR=0+p*85;fig.state.kneeL=0+p*85;fig.state.kneeR=0+p*85;fig.state.bodyLean=0+p*8;fig.applyState();}});
+    // Laptop on lap
+    const lap=laptop({x:400,y:905,depth:55,height:38,facing:'left',glow:'#5BAADC'});
+    lap.setAttribute('opacity',0); ctx.objectLayer.appendChild(lap);
+    await fadeIn(lap,400);
+    // Hands on keyboard
+    await tween({from:0,to:1,duration:500,easing:EASE.easeInOut,
+      onUpdate:(p)=>{fig.state.shoulderL=0+p*20;fig.state.shoulderR=0+p*20;fig.state.elbowL=0+p*75;fig.state.elbowR=0+p*75;fig.applyState();}});
+    // ATS rejection emails — language is resume-stage only, no interview references
+    const rejects=[
+      {time:'Mon 8:06 AM',company:'CyberSec Corp',    message:'We will not be moving forward with your application at this time...'},
+      {time:'Mon 2:34 PM',company:'DefenseNet LLC',   message:'After reviewing your resume, we have decided to pursue other candidates...'},
+      {time:'Tue 9:18 AM',company:'CloudGuard Inc.',  message:'Thank you for applying. We\'ve moved forward with other applicants...'},
+      {time:'Wed 11:02 AM',company:'SecureBase Co.',  message:'Your background does not meet our current requirements...'},
+      {time:'Thu 3:45 PM',company:'InfoSec Group',    message:'We will not be moving forward with your application at this time...'},
+      {time:'Fri 10:20 AM',company:'Sentinel Systems',message:'After reviewing your qualifications, we\'ve selected other candidates...'},
+    ];
+    let yPos=232;
+    for(const r of rejects) {
+      const card=rejectionEmail({x:1460,y:yPos,width:330,height:74,company:r.company,time:r.time,message:r.message});
+      ctx.overlayLayer.appendChild(card);
+      // Slide in from right
+      const startX=1750;
+      card.setAttribute('transform',`translate(${startX},${yPos})`);
+      tween({from:startX,to:1460,duration:460,easing:EASE.easeOut,onUpdate:(x)=>card.setAttribute('transform',`translate(${x},${yPos})`)});
+      fadeIn(card,460);
+      yPos+=90;
+      await wait(540);
+    }
+    ctx.showResource();
+    await wait(900);
+    // Weight of rejection — figure slumps further
+    await tween({from:fig.state.bodyLean,to:22,duration:800,easing:EASE.easeInOut,
+      onUpdate:(v)=>{fig.state.bodyLean=v;fig.applyState();}});
+    await wait(1100);
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// SCENE 8 — Still Walking
+// ──────────────────────────────────────────────────────────────────────
+const SCENE_8 = {
+  id:'scene8', gradient:'final',
+  chapter:'CHAPTER 08 — Still in Progress',
+  title:'Still Walking',
+  narrative:'The door hasn\'t opened yet. But I\'m still walking. Every rejection is data. Every lab session is a rep. The hangar taught me: you don\'t stop until the aircraft is safe to fly.',
+  resource:null,
+  setup(ctx) {
+    ctx.worldLayer.appendChild(stars({count:20}));
+    ctx.worldLayer.appendChild(svg('rect',{x:0,y:920,width:1920,height:160,fill:'#0F1420'}));
+    // Horizon glow — the door ahead
+    ctx.worldLayer.appendChild(svg('ellipse',{cx:1900,cy:920,rx:500,ry:180,fill:'#5BAADC',opacity:0.06}));
+    ctx.worldLayer.appendChild(svg('ellipse',{cx:1900,cy:920,rx:280,ry:100,fill:'#5BAADC',opacity:0.06}));
+    ctx.worldLayer.appendChild(ground());
+  },
+  async play(ctx) {
+    const {fig}=ctx;
+    fig.state.x=100; fig.state.y=920; fig.state.facing=1; fig.state.scale=1.7;
+    fig.state.helmetOn=false; fig.releaseItem('L'); fig.releaseItem('R');
+    fig.applyState();
+    fig.root.setAttribute('opacity',0);
+    await wait(700);
+    // Fade figure in
+    await tween({from:0,to:1,duration:600,easing:EASE.easeOut,onUpdate:(v)=>fig.root.setAttribute('opacity',v)});
+    // Takeaways list
+    const lines=[
+      {text:'Your trade is a credential. Lead with it.',color:'#5BAADC'},
+      {text:'Certs open doors. Labs prove you can walk through them.',color:'#F97316'},
+      {text:'ATS rejects keywords. Humans hire people. Find the humans.',color:'#4ADE80'},
+      {text:'Document everything — treat your lab like a maintenance log.',color:'#5BAADC'},
+      {text:'Rejection is data, not verdict. Adjust and reapply.',color:'#F97316'},
+      {text:'Safety-critical systems thinking is rare in cyber. Say it loud.',color:'#4ADE80'},
+      {text:'One referral from aviation contacts can bypass the whole ATS.',color:'#5BAADC'},
+      {text:'The aircraft doesn\'t fly until it\'s ready. Keep turning wrenches.',color:'#F97316'},
+    ];
+    const listG=group('translate(960,255)');
+    ctx.overlayLayer.appendChild(listG);
+    for(let i=0;i<lines.length;i++) {
+      const item=lines[i];
+      const lineG=group(`translate(0,${i*58})`); lineG.setAttribute('opacity',0);
+      lineG.appendChild(svg('circle',{cx:-420,cy:0,r:15,fill:item.color,stroke:'#0A0C10','stroke-width':1.5}));
+      const num=svg('text',{x:-420,y:6,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':13,'font-weight':500,fill:'#0A0C10'});
+      num.textContent=(i+1).toString(); lineG.appendChild(num);
+      const t=svg('text',{x:-395,y:7,'text-anchor':'start','font-family':'Fraunces,serif','font-size':21,'font-style':'italic','font-weight':300,fill:'#E8D5B4'});
+      t.textContent=item.text; lineG.appendChild(t);
+      listG.appendChild(lineG);
+      fadeIn(lineG,600);
+      await wait(540);
+    }
+    // Resources footer
+    await wait(600);
+    const rG=group('translate(960,890)'); rG.setAttribute('opacity',0);
+    const rtitle=svg('text',{x:0,y:-52,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':11,'font-weight':500,fill:'#F97316','letter-spacing':4});
+    rtitle.textContent='RESOURCES IN USE RIGHT NOW'; rG.appendChild(rtitle);
+    const rlines=['TryHackMe · HackTheBox · Blue Team Labs · Professor Messer','CompTIA A+ → Net+ → Sec+ · pfSense · Splunk Free · Kali Linux','WGU BS Cybersecurity · r/cybersecurity · local ISACA chapter'];
+    for(let i=0;i<rlines.length;i++) {
+      const rl=svg('text',{x:0,y:-32+i*18,'text-anchor':'middle','font-family':'DM Mono,monospace','font-size':12,'font-weight':300,fill:'#E8D5B4',opacity:0.72});
+      rl.textContent=rlines[i]; rG.appendChild(rl);
+    }
+    ctx.overlayLayer.appendChild(rG);
+    await fadeIn(rG,800);
+    // Figure walks toward the glow on the horizon
+    await actions.walkTo(fig,1820,{speed:160});
+  }
+};
+
+window.LongWalk.scenes = [SCENE_1, SCENE_2, SCENE_3, SCENE_4, SCENE_5, SCENE_6, SCENE_7, SCENE_8];
+})();
+</script>
+
+<!-- ============================================================ APP ENGINE ============================================================ -->
+<script>
+(function() {
+'use strict';
+const { Figure, scenes, help, cancelAllTweens, wait } = window.LongWalk;
+const { makeGradient, GRADIENTS } = help;
+function mkSvg(tag,attrs) { const e=document.createElementNS('http://www.w3.org/2000/svg',tag); if(attrs) for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+let curIdx=0, curScene=null, inTransition=false, fig=null;
+const stage=document.getElementById('stageSvg');
+const worldLayer=document.getElementById('worldLayer');
+const objectLayer=document.getElementById('objectLayer');
+const figureLayer=document.getElementById('figureLayer');
+const overlayLayer=document.getElementById('overlayLayer');
+const bgLayer=document.getElementById('bgLayer');
+const defsLayer=document.getElementById('defsLayer');
+const chapterTag=document.getElementById('chapterTag');
+const sceneTitle=document.getElementById('sceneTitle');
+const narrative=document.getElementById('narrative');
+const resource=document.getElementById('resource');
+const resourceLabel=document.getElementById('resourceLabel');
+const resourceText=document.getElementById('resourceText');
+const progressDots=document.getElementById('progressDots');
+
+for(const [n,c] of Object.entries(GRADIENTS)) defsLayer.appendChild(makeGradient('bg-'+n,c));
+
+function buildDots() {
+  progressDots.innerHTML='';
+  for(let i=0;i<scenes.length;i++) {
+    const d=document.createElement('div'); d.className='progress-dot'; if(i===curIdx) d.classList.add('active'); d.dataset.idx=i; progressDots.appendChild(d);
+  }
+}
+function updateDots() { Array.from(progressDots.children).forEach((d,i)=>d.classList.toggle('active',i===curIdx)); }
+
+async function loadScene(idx) {
+  if(idx<0||idx>=scenes.length||inTransition) return;
+  inTransition=true;
+  cancelAllTweens();
+  [worldLayer,objectLayer,figureLayer,overlayLayer,bgLayer].forEach(l=>l.innerHTML='');
+  [chapterTag,sceneTitle,narrative,resource].forEach(e=>e.classList.remove('show'));
+  await wait(50);
+  curIdx=idx; curScene=scenes[idx]; updateDots();
+  bgLayer.appendChild(mkSvg('rect',{x:0,y:0,width:1920,height:1080,fill:`url(#bg-${curScene.gradient})`}));
+  fig=new Figure({x:100,y:920,scale:1.7,backpack:true});
+  fig.face('right'); figureLayer.appendChild(fig.root);
+  chapterTag.textContent=curScene.chapter;
+  sceneTitle.textContent=curScene.title;
+  narrative.textContent=curScene.narrative;
+  if(curScene.resource) { resourceLabel.textContent=curScene.resource.label; resourceText.textContent=curScene.resource.text; }
+  else { resourceLabel.textContent=''; resourceText.textContent=''; }
+  const ctx={
+    stage,worldLayer,objectLayer,figureLayer,overlayLayer,fig,
+    LongWalk:window.LongWalk,
+    showResource:()=>{ if(curScene.resource) resource.classList.add('show'); },
+    hideResource:()=>resource.classList.remove('show'),
+    setNarrative:(t)=>{ narrative.textContent=t; },
+  };
+  curScene.setup(ctx);
+  setTimeout(()=>chapterTag.classList.add('show'),200);
+  setTimeout(()=>sceneTitle.classList.add('show'),800);
+  setTimeout(()=>narrative.classList.add('show'),1800);
+  inTransition=false;
+  curScene.play(ctx).catch(err=>{
+    console.error(err);
+    const e=document.createElement('div');
+    e.style.cssText='position:fixed;top:60px;left:10px;background:#300;color:#fff;padding:10px;z-index:9999;font:12px monospace;max-width:420px;border:1px solid #f44;';
+    e.textContent='Scene error: '+err.message; document.body.appendChild(e);
+  });
+}
+
+function next() { if(curIdx<scenes.length-1) loadScene(curIdx+1); }
+function prev() { if(curIdx>0) loadScene(curIdx-1); }
+function replay() { loadScene(curIdx); }
+
+const titleScreen=document.getElementById('titleScreen');
+let onTitle=true;
+function hideTitle() { if(!onTitle) return; onTitle=false; titleScreen.classList.add('hidden'); loadScene(0); }
+function showTitle() { onTitle=true; titleScreen.classList.remove('hidden'); cancelAllTweens(); [worldLayer,objectLayer,figureLayer,overlayLayer,bgLayer].forEach(l=>l.innerHTML=''); [chapterTag,sceneTitle,narrative,resource].forEach(e=>e.classList.remove('show')); }
+
+document.addEventListener('keydown',(e)=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const k=e.key;
+  if(onTitle) {
+    if(k===' '||k==='Enter'||k==='ArrowRight') { e.preventDefault(); hideTitle(); }
+    else if(k.toLowerCase()==='f') { e.preventDefault(); document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen(); }
+    return;
+  }
+  if(k===' '||k==='ArrowRight') { e.preventDefault(); next(); }
+  else if(k==='ArrowLeft') { e.preventDefault(); prev(); }
+  else if(k.toLowerCase()==='r') { e.preventDefault(); replay(); }
+  else if(k>='1'&&k<='8') { const n=parseInt(k,10)-1; if(n<scenes.length) loadScene(n); }
+  else if(k.toLowerCase()==='t') { e.preventDefault(); showTitle(); }
+  else if(k==='?'||k==='/') { e.preventDefault(); document.getElementById('helpOverlay').classList.toggle('show'); }
+  else if(k==='Escape') { document.getElementById('helpOverlay').classList.remove('show'); }
+  else if(k.toLowerCase()==='f') { e.preventDefault(); document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen(); }
+});
+
+titleScreen.addEventListener('click', hideTitle);
+progressDots.addEventListener('click',(e)=>{ if(e.target.classList.contains('progress-dot')) loadScene(parseInt(e.target.dataset.idx,10)); });
+document.getElementById('navPrev').addEventListener('click', prev);
+document.getElementById('navNext').addEventListener('click', next);
+document.getElementById('navReplay').addEventListener('click', replay);
+buildDots();
+})();
+</script>
+
+</body>
+</html>
